@@ -1,0 +1,108 @@
+@baseUrl = http://localhost:3000
+
+# @name root
+GET {{baseUrl}} HTTP/1.1
+
+### 
+# @name categories
+GET {{baseUrl}}/api/categories HTTP/1.1
+
+###
+# @name createCategory
+POST {{baseUrl}}/api/categories HTTP/1.1
+content-type: application/json
+
+{
+    "name": "Công nghệ"
+}
+
+### 
+# @name categoryById
+GET {{baseUrl}}/api/categories/1 HTTP/1.1
+
+### 
+# @name categoryByTitle
+GET {{baseUrl}}/api/categories/cong-nghe HTTP/1.1
+
+### 
+# @name categoryNotFound
+GET {{baseUrl}}/api/categories/1a HTTP/1.1
+
+###
+# @name createCategorySameName
+POST {{baseUrl}}/api/categories HTTP/1.1
+content-type: application/json
+
+{
+    "name": "Công nghệ"
+}
+
+###
+# @name createSecondCategory
+POST {{baseUrl}}/api/categories HTTP/1.1
+content-type: application/json
+
+{
+    "name": "Ngôn ngữ lập trình"
+}
+
+### 
+# @name secondCategoryById
+GET {{baseUrl}}/api/categories/2 HTTP/1.1
+
+### 
+# @name secondCategoryByTitle
+GET {{baseUrl}}/api/categories/ngon-ngu-lap-trinh HTTP/1.1
+
+###
+# @name posts
+GET {{baseUrl}}/api/posts HTTP/1.1
+
+###
+# @name createPostInvalidPayload
+POST {{baseUrl}}/api/posts HTTP/1.1
+content-type: application/json
+
+{
+    "title": "Tiêu đề bằng tiếng Việt"
+}
+
+###
+# @name createPost
+POST {{baseUrl}}/api/posts HTTP/1.1
+content-type: application/json
+
+{
+    "title": "My First Blog Post",
+    "content": "This is the updated content of my first blog post."
+}
+
+###
+# @name postById
+GET {{baseUrl}}/api/posts/1 HTTP/1.1
+
+###
+# @name postByTitle
+GET {{baseUrl}}/api/posts/my-first-blog-post HTTP/1.1
+
+###
+# @name postInvalidParam
+GET {{baseUrl}}/api/posts/my-first-blog-post-a HTTP/1.1
+
+###
+# @name createSecondPost
+POST {{baseUrl}}/api/posts HTTP/1.1
+content-type: application/json
+
+{
+    "title": "Làm sao để cải thiện viết blog",
+    "content": "This is the updated content of my first blog post."
+}
+
+###
+# @name postById
+GET {{baseUrl}}/api/posts/2 HTTP/1.1
+
+###
+# @name postByTitle
+GET {{baseUrl}}/api/posts/lam-sao-de-cai-thien-viet-blog HTTP/1.1
