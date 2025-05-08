@@ -1,16 +1,18 @@
 import { Hono } from "hono";
-
-import { ReasonPhrases, StatusCodes } from "http-status-codes";
+import { requestId } from "hono/request-id";
 
 import api from "./router";
 
-const app = new Hono();
+import { ReasonPhrases, StatusCodes } from "http-status-codes";
 
-app.get("/", (c) => {
-  return c.text("Hello Hono!");
-});
-
-app.route("/api", api);
+const app = new Hono()
+  .use(requestId())
+  .get("/", (c) => {
+    return c.json({
+      message: "Hello from Blog API",
+    });
+  })
+  .route("/api", api);
 
 app.notFound((c) => {
   return c.json(
