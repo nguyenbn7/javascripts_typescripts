@@ -197,8 +197,6 @@ export async function updatePost(
 
     logDbError(updatePost, error);
 
-    console.log(error);
-
     const result = {
       data: null,
       errorCode: "cannot_update_post" as UpdatePostErrorCode,

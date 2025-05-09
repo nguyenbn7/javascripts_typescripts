@@ -4,5 +4,5 @@ export async function logDbError(func: Function, error: DatabaseError) {
   const functionName = func.name;
 
   console.error(`Error when calling ${functionName}():`);
-  console.error({ ...error });
+  console.log(error);
 }
