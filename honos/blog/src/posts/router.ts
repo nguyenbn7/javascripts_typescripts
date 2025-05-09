@@ -20,27 +20,43 @@ const app = new Hono()
       posts,
     });
   })
-  .get("/:id", zValidator("param", postIdSchema), async (c) => {
-    const { id } = c.req.param();
+  .get(
+    "/:id",
+    zValidator("param", postIdSchema, (result, c) => {
+      if (!result.success)
+        return c.json(
+          {
+            title: ReasonPhrases.BAD_REQUEST,
+            status: StatusCodes.BAD_REQUEST,
+            detail: "Invalid id",
+          },
+          StatusCodes.BAD_REQUEST
+        );
+    }),
+    async (c) => {
+      const { id } = c.req.param();
 
-    const post = await getPostById({ id });
+      const { data, error } = await getPostById({ id });
 
-    if (!post)
-      return c.json(
-        {
-          status: StatusCodes.NOT_FOUND,
-          title: ReasonPhrases.NOT_FOUND,
-          detail: `Post with id '${id}' not found`,
-        },
-        StatusCodes.NOT_FOUND
-      );
+      if (error) return c.json(error, error.status);
 
-    const { categoryId, ...customPostData } = post;
+      if (!data)
+        return c.json(
+          {
+            status: StatusCodes.NOT_FOUND,
+            title: ReasonPhrases.NOT_FOUND,
+            detail: `Post with id '${id}' not found`,
+          },
+          StatusCodes.NOT_FOUND
+        );
 
-    return c.json({
-      post: customPostData,
-    });
-  })
+      const { categoryId, ...post } = data;
+
+      return c.json({
+        post,
+      });
+    }
+  )
   .post(
     "/",
     zValidator("json", postSchema, (result, c) => {
@@ -62,17 +78,15 @@ const app = new Hono()
     async (c) => {
       const { title, categoryId, content, published } = c.req.valid("json");
 
-      const post = await createPost({ title, categoryId, content, published });
+      const { data: post, error } = await createPost({
+        title,
+        categoryId,
+        content,
+        published,
+      });
 
-      if (!post) {
-        return c.json(
-          {
-            title: ReasonPhrases.CONFLICT,
-            status: StatusCodes.CONFLICT,
-            detail: "Cannot create post due to duplicated title",
-          },
-          StatusCodes.CONFLICT
-        );
+      if (error) {
+        return c.json(error, error.status);
       }
 
       return c.json({
@@ -88,7 +102,7 @@ const app = new Hono()
           {
             title: ReasonPhrases.BAD_REQUEST,
             status: StatusCodes.BAD_REQUEST,
-            detail: "Invalid params",
+            detail: "Invalid id",
           },
           StatusCodes.BAD_REQUEST
         );
@@ -113,7 +127,9 @@ const app = new Hono()
       const { id } = c.req.valid("param");
       const { title, categoryId, content, published } = c.req.valid("json");
 
-      const existedPost = await getPostById({ id });
+      const { data: existedPost, error } = await getPostById({ id });
+
+      if (error) return c.json(error, error.status);
 
       if (!existedPost)
         return c.json(
@@ -130,7 +146,7 @@ const app = new Hono()
         {
           title: title ?? existedPost.title,
           content: content ?? existedPost.content,
-          categoryId: categoryId ?? existedPost.categoryId,
+          categoryId: existedPost.categoryId ?? categoryId,
           published: published ?? existedPost.published,
         }
       );

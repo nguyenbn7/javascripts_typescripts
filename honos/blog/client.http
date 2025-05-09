@@ -1,108 +1,39 @@
 @baseUrl = http://localhost:3000
 
-# @name root
+# @name get_root
 GET {{baseUrl}} HTTP/1.1
 
 ### 
-# @name categories
+# @name get_categories
 GET {{baseUrl}}/api/categories HTTP/1.1
 
 ###
-# @name createCategory
+# @name create_category
 POST {{baseUrl}}/api/categories HTTP/1.1
 content-type: application/json
 
 {
-    "name": "Công nghệ"
+    "name": "Programming language"
 }
 
 ### 
-# @name categoryById
-GET {{baseUrl}}/api/categories/1 HTTP/1.1
-
-### 
-# @name categoryByTitle
-GET {{baseUrl}}/api/categories/cong-nghe HTTP/1.1
-
-### 
-# @name categoryNotFound
-GET {{baseUrl}}/api/categories/1a HTTP/1.1
+# @name get_category_by_id
+GET {{baseUrl}}/api/categories/f60b3adc-6048-4fb8-a6f7-e4d50c566a0b HTTP/1.1
 
 ###
-# @name createCategorySameName
-POST {{baseUrl}}/api/categories HTTP/1.1
-content-type: application/json
-
-{
-    "name": "Công nghệ"
-}
-
-###
-# @name createSecondCategory
-POST {{baseUrl}}/api/categories HTTP/1.1
-content-type: application/json
-
-{
-    "name": "Ngôn ngữ lập trình"
-}
-
-### 
-# @name secondCategoryById
-GET {{baseUrl}}/api/categories/2 HTTP/1.1
-
-### 
-# @name secondCategoryByTitle
-GET {{baseUrl}}/api/categories/ngon-ngu-lap-trinh HTTP/1.1
-
-###
-# @name posts
+# @name get_posts
 GET {{baseUrl}}/api/posts HTTP/1.1
 
 ###
-# @name createPostInvalidPayload
+# @name create_post
 POST {{baseUrl}}/api/posts HTTP/1.1
 content-type: application/json
 
 {
-    "title": "Tiêu đề bằng tiếng Việt"
-}
-
-###
-# @name createPost
-POST {{baseUrl}}/api/posts HTTP/1.1
-content-type: application/json
-
-{
-    "title": "My First Blog Post",
+    "title": "My 1st Blog Post",
     "content": "This is the updated content of my first blog post."
 }
 
 ###
-# @name postById
-GET {{baseUrl}}/api/posts/1 HTTP/1.1
-
-###
-# @name postByTitle
-GET {{baseUrl}}/api/posts/my-first-blog-post HTTP/1.1
-
-###
-# @name postInvalidParam
-GET {{baseUrl}}/api/posts/my-first-blog-post-a HTTP/1.1
-
-###
-# @name createSecondPost
-POST {{baseUrl}}/api/posts HTTP/1.1
-content-type: application/json
-
-{
-    "title": "Làm sao để cải thiện viết blog",
-    "content": "This is the updated content of my first blog post."
-}
-
-###
-# @name postById
-GET {{baseUrl}}/api/posts/2 HTTP/1.1
-
-###
-# @name postByTitle
-GET {{baseUrl}}/api/posts/lam-sao-de-cai-thien-viet-blog HTTP/1.1
+# @name get_post_by_id
+GET {{baseUrl}}/api/posts/865cf659-2e92-48c4-bdfe-fcbd4f11f546 HTTP/1.1

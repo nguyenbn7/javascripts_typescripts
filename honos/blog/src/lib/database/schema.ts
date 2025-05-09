@@ -12,14 +12,22 @@ import {
 export const categoryTable = pgTable(
   "category",
   {
-    id: uuid().defaultRandom().primaryKey(),
+    id: uuid().primaryKey().defaultRandom(),
     name: varchar({ length: 255 }).notNull(),
     normalizedName: varchar("normalized_name", { length: 255 })
       .notNull()
       .unique(),
+    slug: varchar({ length: 255 }).notNull().unique(),
     description: text(),
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at")
+      .defaultNow()
+      .$onUpdateFn(() => sql`now()`),
   },
-  (table) => [uniqueIndex("name_idx").on(table.normalizedName)]
+  (table) => [
+    uniqueIndex("name_idx").on(table.normalizedName),
+    uniqueIndex("slug_category_idx").on(table.slug),
+  ]
 );
 
 export const categoryRelations = relations(categoryTable, ({ many }) => ({
@@ -29,20 +37,26 @@ export const categoryRelations = relations(categoryTable, ({ many }) => ({
 export const postTable = pgTable(
   "post",
   {
-    id: uuid().defaultRandom().primaryKey(),
+    id: uuid().primaryKey().defaultRandom(),
     title: varchar({ length: 255 }).notNull(),
     normalizedTitle: varchar("normalized_title", { length: 255 })
       .notNull()
       .unique(),
+    slug: varchar({ length: 255 }).notNull().unique(),
     createdAt: timestamp("created_at").defaultNow(),
     updatedAt: timestamp("updated_at")
       .defaultNow()
       .$onUpdateFn(() => sql`now()`),
     published: boolean().default(false),
     content: text().notNull(),
-    categoryId: varchar({ length: 255 }).notNull(),
+    categoryId: uuid("category_id").references(() => categoryTable.id, {
+      onDelete: "set null",
+    }),
   },
-  (table) => [uniqueIndex("title_idx").on(table.normalizedTitle)]
+  (table) => [
+    uniqueIndex("title_idx").on(table.normalizedTitle),
+    uniqueIndex("slug_post_idx").on(table.slug),
+  ]
 );
 
 export const postRelations = relations(postTable, ({ one }) => ({

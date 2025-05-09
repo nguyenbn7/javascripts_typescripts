@@ -22,7 +22,7 @@ const app = new Hono()
           {
             title: ReasonPhrases.BAD_REQUEST,
             status: StatusCodes.BAD_REQUEST,
-            detail: "Invalid params",
+            detail: "Invalid id",
           },
           StatusCodes.BAD_REQUEST
         );
@@ -30,7 +30,9 @@ const app = new Hono()
     async (c) => {
       const { id } = c.req.valid("param");
 
-      const category = await getCategoryById({ id });
+      const { data: category, error } = await getCategoryById({ id });
+
+      if (error) return c.json(error, error.status);
 
       if (!category)
         return c.json(
@@ -68,20 +70,12 @@ const app = new Hono()
     async (c) => {
       const { name, description } = c.req.valid("json");
 
-      const category = await createCategory({
+      const { data: category, error } = await createCategory({
         name,
         description: description ?? null,
       });
 
-      if (!category)
-        return c.json(
-          {
-            title: ReasonPhrases.UNPROCESSABLE_ENTITY,
-            status: StatusCodes.UNPROCESSABLE_ENTITY,
-            detail: "Cannot create category",
-          },
-          StatusCodes.CONFLICT
-        );
+      if (error) return c.json(error, error.status);
 
       return c.json({
         category,

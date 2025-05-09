@@ -1,7 +1,13 @@
+import type { DatabaseError } from "pg-protocol";
+
 import db from "../lib/database";
 import { categoryTable } from "../lib/database/schema";
+import { logDbError } from "../lib/database/error";
 import { normalizeString } from "../lib";
 import { eq, getTableColumns } from "drizzle-orm";
+import slug from "slug";
+import { ReasonPhrases, StatusCodes } from "http-status-codes";
+import { ContentfulStatusCode } from "hono/utils/http-status";
 
 const { normalizedName, ...columns } = getTableColumns(categoryTable);
 
@@ -12,35 +18,86 @@ export async function getCategories() {
 export async function getCategoryById(searchParams: { id: string }) {
   const { id } = searchParams;
 
-  const categories = await db
-    .select({ ...columns })
-    .from(categoryTable)
-    .where(eq(categoryTable.id, id))
-    .limit(1);
+  try {
+    const [category] = await db
+      .select({ ...columns })
+      .from(categoryTable)
+      .where(eq(categoryTable.id, id))
+      .limit(1);
 
-  return categories.at(0);
+    return {
+      data: category,
+      error: null,
+    };
+  } catch (e) {
+    const error = e as DatabaseError;
+
+    logDbError(getCategoryById, error);
+
+    if (error.code === "22P02")
+      return {
+        data: null,
+        error: {
+          title: ReasonPhrases.BAD_REQUEST,
+          status: StatusCodes.BAD_REQUEST as ContentfulStatusCode,
+          detail: "Invalid id",
+        },
+      };
+
+    return {
+      data: null,
+      error: {
+        title: "Unknown",
+        status: -1 as ContentfulStatusCode,
+        detail: "Unknown error",
+      },
+    };
+  }
 }
 
 export async function createCategory(data: {
   name: string;
   description: string | null;
 }) {
-  try {
-    const { name, description } = data;
+  const { name, description } = data;
 
-    const categories = await db
+  try {
+    const [category] = await db
       .insert(categoryTable)
       .values({
         name,
         description,
         normalizedName: normalizeString(name),
+        slug: slug(name),
       })
       .returning({ ...columns });
 
-    return categories.at(0);
-  } catch (error) {
-    console.log("Error at createCategory():", error);
+    return {
+      data: category,
+      error: null,
+    };
+  } catch (e) {
+    const error = e as DatabaseError;
 
-    return;
+    logDbError(createCategory, error);
+
+    if (error.code === "23505")
+      return {
+        data: null,
+        error: {
+          title: ReasonPhrases.CONFLICT,
+          status: StatusCodes.CONFLICT as ContentfulStatusCode,
+          detail: `Category '${name}' existed`,
+        },
+      };
+
+    return {
+      data: null,
+      error: {
+        title: ReasonPhrases.UNPROCESSABLE_ENTITY,
+        status: StatusCodes.UNPROCESSABLE_ENTITY as ContentfulStatusCode,
+        detail: "Cannot create category",
+      },
+    };
   }
 }
