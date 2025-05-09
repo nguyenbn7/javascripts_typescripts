@@ -21,19 +21,33 @@ content-type: application/json
 GET {{baseUrl}}/api/categories/f60b3adc-6048-4fb8-a6f7-e4d50c566a0b HTTP/1.1
 
 ###
-# @name get_posts
-GET {{baseUrl}}/api/posts HTTP/1.1
-
-###
 # @name create_post
 POST {{baseUrl}}/api/posts HTTP/1.1
 content-type: application/json
 
 {
-    "title": "My 1st Blog Post",
+    "title": "My 3rd Blog Post",
     "content": "This is the updated content of my first blog post."
 }
 
 ###
-# @name get_post_by_id
-GET {{baseUrl}}/api/posts/865cf659-2e92-48c4-bdfe-fcbd4f11f546 HTTP/1.1
+# @name update_post
+PUT {{baseUrl}}/api/posts/a1c4e1a3-c1c7-4b85-a2d7-5a012810a1fc HTTP/1.1
+content-type: application/json
+
+{
+    "title": "My 2nd Blog Post",
+    "content": "This is the updated content of my first blog post."
+}
+
+###
+# @name get_posts
+GET {{baseUrl}}/api/posts HTTP/1.1
+
+###
+# @name get_post
+GET {{baseUrl}}/api/posts/7a80695f-3cbb-46a8-959e-66c8731daa44 HTTP/1.1
+
+###
+# @name delete_post
+DELETE {{baseUrl}}/api/posts/a29e449d-b805-4d36-9708-5ec7c89d7a67 HTTP/1.1

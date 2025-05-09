@@ -4,10 +4,8 @@ import db from "../lib/database";
 import { categoryTable, postTable } from "../lib/database/schema";
 import { logDbError } from "../lib/database/error";
 import { normalizeString } from "../lib";
-import { eq, getTableColumns, sql } from "drizzle-orm";
+import { eq, getTableColumns } from "drizzle-orm";
 import slug from "slug";
-import { ReasonPhrases, StatusCodes } from "http-status-codes";
-import { ContentfulStatusCode } from "hono/utils/http-status";
 
 const { normalizedTitle, categoryId, ...columns } = getTableColumns(postTable);
 
@@ -20,6 +18,8 @@ export async function getPosts() {
     .from(postTable)
     .leftJoin(categoryTable, eq(postTable.categoryId, categoryTable.id));
 }
+
+type GetPostByIdErrorCode = "post_not_found" | "unknown_error";
 
 export async function getPostById(searchParams: { id: string }) {
   const { id } = searchParams;
@@ -36,35 +36,44 @@ export async function getPostById(searchParams: { id: string }) {
       .where(eq(postTable.id, id))
       .limit(1);
 
+    const post = posts.at(0);
+
+    if (!post) {
+      const error = new Error("Post Not Found") as DatabaseError;
+      error.code = "22P02";
+      throw error;
+    }
+
     return {
-      data: posts.at(0),
-      error: null,
+      data: post,
+      errorCode: null,
     };
   } catch (e) {
     const error = e as DatabaseError;
 
     logDbError(getPostById, error);
 
-    if (error.code === "22P02")
-      return {
-        data: null,
-        error: {
-          title: ReasonPhrases.BAD_REQUEST,
-          status: StatusCodes.BAD_REQUEST as ContentfulStatusCode,
-          detail: "Invalid id",
-        },
-      };
-
-    return {
+    const result = {
       data: null,
-      error: {
-        title: "Unknown",
-        status: -1 as ContentfulStatusCode,
-        detail: "Unknown error",
-      },
+      errorCode: "unknown_error" as GetPostByIdErrorCode,
     };
+
+    switch (error.code) {
+      case "22P02":
+        result.errorCode = "post_not_found";
+        break;
+      default:
+        break;
+    }
+
+    return result;
   }
 }
+
+type CreatePostErrorCode =
+  | "duplicate_post_title"
+  | "category_not_found"
+  | "cannot_create_post";
 
 export async function createPost(data: {
   title: string;
@@ -98,67 +107,52 @@ export async function createPost(data: {
 
       return {
         data: { ...post, category: category.name },
-        error: null,
+        errorCode: null,
       };
     }
 
     return {
       data: { ...post, category: null },
-      error: null,
+      errorCode: null,
     };
   } catch (e) {
     const error = e as DatabaseError;
 
     logDbError(createPost, error);
 
-    if (error.code === "23505")
-      return {
-        data: null,
-        error: {
-          title: ReasonPhrases.CONFLICT,
-          status: StatusCodes.CONFLICT as ContentfulStatusCode,
-          detail: `Post '${title}' existed`,
-        },
-      };
-
-    if (error.code === "22P02")
-      return {
-        data: null,
-        error: {
-          title: ReasonPhrases.BAD_REQUEST,
-          status: StatusCodes.BAD_REQUEST as ContentfulStatusCode,
-          detail: "Invalid category id",
-        },
-      };
-
-    if (error.code === "23503")
-      return {
-        data: null,
-        error: {
-          title: ReasonPhrases.NOT_FOUND,
-          status: StatusCodes.NOT_FOUND as ContentfulStatusCode,
-          detail: `Category with id '${categoryId}' not found`,
-        },
-      };
-
-    return {
+    const result = {
       data: null,
-      error: {
-        title: ReasonPhrases.UNPROCESSABLE_ENTITY,
-        status: StatusCodes.UNPROCESSABLE_ENTITY as ContentfulStatusCode,
-        detail: "Cannot create post",
-      },
+      errorCode: "cannot_create_post" as CreatePostErrorCode,
     };
+
+    switch (error.code) {
+      case "23505":
+        result.errorCode = "duplicate_post_title";
+        break;
+      case "23503":
+      case "22P02":
+        result.errorCode = "category_not_found";
+        break;
+      default:
+        break;
+    }
+
+    return result;
   }
 }
+
+type UpdatePostErrorCode =
+  | "cannot_update_post"
+  | "category_not_found"
+  | "duplicate_post_title";
 
 export async function updatePost(
   searchParams: { id: string },
   data: {
     title: string;
     content: string;
-    categoryId?: string | null;
-    published?: boolean | null;
+    categoryId: string | null;
+    published: boolean | null;
   }
 ) {
   const { id } = searchParams;
@@ -173,62 +167,101 @@ export async function updatePost(
         content,
         normalizedTitle: normalizeString(title),
         published,
-        categoryId,
+        slug: slug(title),
+        categoryId: categoryId ?? null,
       })
       .where(eq(postTable.id, id))
       .returning({
-        id: columns.id,
+        ...columns,
+        categoryId: postTable.categoryId,
       });
 
+    if (post.categoryId) {
+      const [category] = await db
+        .select({ name: categoryTable.name })
+        .from(categoryTable)
+        .where(eq(categoryTable.id, post.categoryId));
+
+      return {
+        data: { ...post, category: category.name },
+        errorCode: null,
+      };
+    }
+
     return {
-      data: post,
-      error: null,
+      data: { ...post, category: null },
+      errorCode: null,
     };
   } catch (e) {
     const error = e as DatabaseError;
 
     logDbError(updatePost, error);
 
-    if (error.code === "23505")
-      return {
-        data: null,
-        error: {
-          message: `Post '${title}' existed`,
-        },
-      };
+    console.log(error);
 
-    if (error.code === "22P02")
-      return {
-        data: null,
-        error: {
-          message: "Invalid category id",
-        },
-      };
-
-    if (error.code === "23503")
-      return {
-        data: null,
-        error: {
-          message: `Category with id '${categoryId}' not found`,
-        },
-      };
-
-    return {
+    const result = {
       data: null,
-      error: {
-        message: "Unknown error",
-      },
+      errorCode: "cannot_update_post" as UpdatePostErrorCode,
     };
+
+    switch (error.code) {
+      case "23505":
+        result.errorCode = "duplicate_post_title";
+        break;
+      case "23503":
+      case "22P02":
+        result.errorCode = "category_not_found";
+        break;
+      default:
+        break;
+    }
+
+    return result;
   }
 }
+
+type DeletePostErrorCode = "post_not_found" | "unknown_error";
 
 export async function deletePost(searchParams: { id: string }) {
   const { id } = searchParams;
 
-  const posts = await db
-    .delete(postTable)
-    .where(eq(postTable.id, id))
-    .returning({ id: postTable.id });
+  try {
+    const posts = await db
+      .delete(postTable)
+      .where(eq(postTable.id, id))
+      .returning({ id: postTable.id });
 
-  return posts.at(0);
+    const post = posts.at(0);
+
+    if (!post) {
+      const error = new Error("Post Not Found") as DatabaseError;
+      error.code = "22P02";
+      throw error;
+    }
+
+    return {
+      data: post,
+      errorCode: null,
+    };
+  } catch (e) {
+    const error = e as DatabaseError;
+
+    logDbError(deletePost, error);
+
+    const result = {
+      data: null,
+      errorCode: "unknown_error" as DeletePostErrorCode,
+    };
+
+    switch (error.code) {
+      case "22P02":
+        result.errorCode = "post_not_found";
+        break;
+
+      default:
+        break;
+    }
+
+    return result;
+  }
 }

@@ -1,7 +1,6 @@
 import { Hono } from "hono";
-import { zValidator } from "@hono/zod-validator";
 
-import { postIdSchema, postSchema } from "./schema";
+import { postSchema } from "./schema";
 import {
   createPost,
   deletePost,
@@ -9,6 +8,8 @@ import {
   getPosts,
   updatePost,
 } from "./repository";
+
+import { zValidator } from "../lib/middleware";
 
 import { ReasonPhrases, StatusCodes } from "http-status-codes";
 
@@ -20,27 +21,91 @@ const app = new Hono()
       posts,
     });
   })
-  .get(
-    "/:id",
-    zValidator("param", postIdSchema, (result, c) => {
-      if (!result.success)
+  .get("/:id", async (c) => {
+    const { id } = c.req.param();
+
+    const { data, errorCode } = await getPostById({ id });
+
+    if (errorCode) {
+      if (errorCode === "post_not_found")
         return c.json(
           {
-            title: ReasonPhrases.BAD_REQUEST,
-            status: StatusCodes.BAD_REQUEST,
-            detail: "Invalid id",
+            title: ReasonPhrases.NOT_FOUND,
+            detail: `Post with id '${id}' not found`,
+            status: StatusCodes.NOT_FOUND,
           },
-          StatusCodes.BAD_REQUEST
+          StatusCodes.NOT_FOUND
         );
-    }),
-    async (c) => {
-      const { id } = c.req.param();
+      else
+        return c.json(
+          {
+            title: "Unknown Error",
+            detail: `Cannot get post with id '${id}'`,
+            status: -1,
+          },
+          -1
+        );
+    }
 
-      const { data, error } = await getPostById({ id });
+    const { categoryId, ...post } = data;
 
-      if (error) return c.json(error, error.status);
+    return c.json({
+      post,
+    });
+  })
+  .post("/", zValidator("json", postSchema), async (c) => {
+    const { title, categoryId, content, published } = c.req.valid("json");
 
-      if (!data)
+    const { data: post, errorCode } = await createPost({
+      title,
+      categoryId,
+      content,
+      published,
+    });
+
+    if (errorCode) {
+      if (errorCode === "duplicate_post_title")
+        return c.json(
+          {
+            title: ReasonPhrases.CONFLICT,
+            detail: `Post '${title}' existed`,
+            status: StatusCodes.CONFLICT,
+          },
+          StatusCodes.CONFLICT
+        );
+      else if (errorCode === "category_not_found")
+        return c.json(
+          {
+            title: ReasonPhrases.NOT_FOUND,
+            detail: "Category not found",
+            status: StatusCodes.NOT_FOUND,
+          },
+          StatusCodes.NOT_FOUND
+        );
+      else
+        return c.json(
+          {
+            title: ReasonPhrases.UNPROCESSABLE_ENTITY,
+            detail: "Cannot create post",
+            status: StatusCodes.UNPROCESSABLE_ENTITY,
+          },
+          StatusCodes.UNPROCESSABLE_ENTITY
+        );
+    }
+
+    return c.json({
+      post,
+    });
+  })
+  .put("/:id", zValidator("json", postSchema.partial()), async (c) => {
+    const { id } = c.req.param();
+    const { title, categoryId, content, published } = c.req.valid("json");
+
+    const { data: existedPost, errorCode: getPostErrorCode } =
+      await getPostById({ id });
+
+    if (getPostErrorCode) {
+      if (getPostErrorCode === "post_not_found")
         return c.json(
           {
             status: StatusCodes.NOT_FOUND,
@@ -49,147 +114,93 @@ const app = new Hono()
           },
           StatusCodes.NOT_FOUND
         );
-
-      const { categoryId, ...post } = data;
-
-      return c.json({
-        post,
-      });
+      else
+        return c.json(
+          {
+            title: "Unknown Error",
+            detail: `Cannot get post with id '${id}'`,
+            status: -1,
+          },
+          -1
+        );
     }
-  )
-  .post(
-    "/",
-    zValidator("json", postSchema, (result, c) => {
-      if (!result.success)
-        return c.json(
-          {
-            status: StatusCodes.BAD_REQUEST,
-            title: ReasonPhrases.BAD_REQUEST,
-            detail: "Validation error",
-            errors: result.error.errors.map((e) => ({
-              code: e.code,
-              message: e.message,
-              path: e.path.join("."),
-            })),
-          },
-          StatusCodes.BAD_REQUEST
-        );
-    }),
-    async (c) => {
-      const { title, categoryId, content, published } = c.req.valid("json");
 
-      const { data: post, error } = await createPost({
-        title,
-        categoryId,
-        content,
-        published,
-      });
-
-      if (error) {
-        return c.json(error, error.status);
-      }
-
-      return c.json({
-        post,
-      });
-    }
-  )
-  .put(
-    "/:id",
-    zValidator("param", postIdSchema, (result, c) => {
-      if (!result.success)
-        return c.json(
-          {
-            title: ReasonPhrases.BAD_REQUEST,
-            status: StatusCodes.BAD_REQUEST,
-            detail: "Invalid id",
-          },
-          StatusCodes.BAD_REQUEST
-        );
-    }),
-    zValidator("json", postSchema.partial(), (result, c) => {
-      if (!result.success)
-        return c.json(
-          {
-            status: StatusCodes.BAD_REQUEST,
-            title: ReasonPhrases.BAD_REQUEST,
-            detail: "Validation error",
-            errors: result.error.errors.map((e) => ({
-              code: e.code,
-              message: e.message,
-              path: e.path.join("."),
-            })),
-          },
-          StatusCodes.BAD_REQUEST
-        );
-    }),
-    async (c) => {
-      const { id } = c.req.valid("param");
-      const { title, categoryId, content, published } = c.req.valid("json");
-
-      const { data: existedPost, error } = await getPostById({ id });
-
-      if (error) return c.json(error, error.status);
-
-      if (!existedPost)
-        return c.json(
-          {
-            status: StatusCodes.NOT_FOUND,
-            title: ReasonPhrases.NOT_FOUND,
-            detail: `Post with id '${id}' not found`,
-          },
-          StatusCodes.NOT_FOUND
-        );
-
-      const post = await updatePost(
+    const { data: updatedPost, errorCode: updatePostErrorCode } =
+      await updatePost(
         { id },
         {
           title: title ?? existedPost.title,
           content: content ?? existedPost.content,
-          categoryId: existedPost.categoryId ?? categoryId,
-          published: published ?? existedPost.published,
+          categoryId:
+            categoryId === undefined ? existedPost.categoryId : categoryId,
+          published:
+            published === undefined ? existedPost.published : published,
         }
       );
 
-      return c.json({
-        post,
-      });
-    }
-  )
-  .delete(
-    "/:id",
-    zValidator("param", postIdSchema, (result, c) => {
-      if (!result.success)
+    if (updatePostErrorCode) {
+      if (updatePostErrorCode === "duplicate_post_title")
         return c.json(
           {
-            title: ReasonPhrases.BAD_REQUEST,
-            status: StatusCodes.BAD_REQUEST,
-            detail: "Invalid params",
+            title: ReasonPhrases.CONFLICT,
+            detail: `Post '${title}' existed`,
+            status: StatusCodes.CONFLICT,
           },
-          StatusCodes.BAD_REQUEST
+          StatusCodes.CONFLICT
         );
-    }),
-    async (c) => {
-      const { id } = c.req.valid("param");
-
-      const existedPost = await getPostById({ id });
-
-      if (!existedPost)
+      else if (updatePostErrorCode === "category_not_found")
         return c.json(
           {
-            status: StatusCodes.NOT_FOUND,
             title: ReasonPhrases.NOT_FOUND,
-            detail: `Post with id '${id}' not found`,
+            detail: "Category not found",
+            status: StatusCodes.NOT_FOUND,
           },
           StatusCodes.NOT_FOUND
         );
-
-      const post = await deletePost({ id });
-
-      return c.json({
-        post,
-      });
+      else
+        return c.json(
+          {
+            title: ReasonPhrases.UNPROCESSABLE_ENTITY,
+            detail: "Cannot update post",
+            status: StatusCodes.UNPROCESSABLE_ENTITY,
+          },
+          StatusCodes.UNPROCESSABLE_ENTITY
+        );
     }
-  );
+
+    const { categoryId: _, ...post } = updatedPost;
+
+    return c.json({
+      post,
+    });
+  })
+  .delete("/:id", async (c) => {
+    const { id } = c.req.param();
+
+    const { data: _, errorCode } = await deletePost({ id });
+
+    if (errorCode) {
+      if (errorCode === "post_not_found")
+        return c.json(
+          {
+            title: ReasonPhrases.NOT_FOUND,
+            detail: `Post with id '${id}' not found`,
+            status: StatusCodes.NOT_FOUND,
+          },
+          StatusCodes.NOT_FOUND
+        );
+      else
+        return c.json(
+          {
+            title: "Unknown Error",
+            detail: `Cannot get post with id '${id}'`,
+            status: -1,
+          },
+          -1
+        );
+    }
+
+    return c.body(null, StatusCodes.NO_CONTENT);
+  });
 
 export default app;

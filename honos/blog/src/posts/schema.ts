@@ -1,12 +1,14 @@
 import { z } from "zod";
 
 export const postSchema = z.object({
-  title: z.string().trim().min(1, "Required").max(255, "Maximum length is 255"),
-  content: z.string().min(1),
+  title: z
+    .string({ message: "Title is required" })
+    .trim()
+    .min(1, "Title is empty or/and contains whitespaces")
+    .max(255, "Title maximum length is 255 charaters"),
+  content: z
+    .string({ message: "Content is required" })
+    .min(1, "Content is required"),
   categoryId: z.string().uuid().optional().nullable().default(null),
   published: z.boolean().default(false),
-});
-
-export const postIdSchema = z.object({
-  id: z.string().uuid("Invalid format"),
 });

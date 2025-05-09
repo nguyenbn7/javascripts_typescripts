@@ -22,7 +22,7 @@ export const categoryTable = pgTable(
     createdAt: timestamp("created_at").defaultNow(),
     updatedAt: timestamp("updated_at")
       .defaultNow()
-      .$onUpdateFn(() => sql`now()`),
+      .$onUpdateFn(() => new Date()),
   },
   (table) => [
     uniqueIndex("name_idx").on(table.normalizedName),
@@ -46,7 +46,7 @@ export const postTable = pgTable(
     createdAt: timestamp("created_at").defaultNow(),
     updatedAt: timestamp("updated_at")
       .defaultNow()
-      .$onUpdateFn(() => sql`now()`),
+      .$onUpdateFn(() => new Date()),
     published: boolean().default(false),
     content: text().notNull(),
     categoryId: uuid("category_id").references(() => categoryTable.id, {
