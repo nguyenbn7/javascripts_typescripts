@@ -193,7 +193,7 @@ const app = new Hono()
         return c.json(
           {
             title: "Unknown Error",
-            detail: `Cannot get post with id '${id}'`,
+            detail: `Cannot delete post with id '${id}'`,
             status: -1,
           },
           -1

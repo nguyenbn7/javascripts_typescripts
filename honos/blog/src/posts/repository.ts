@@ -19,7 +19,7 @@ export async function getPosts() {
     .leftJoin(categoryTable, eq(postTable.categoryId, categoryTable.id));
 }
 
-type GetPostByIdErrorCode = "post_not_found" | "unknown_error";
+type GetPostByIdErrorCode = "post_not_found" | "cannot_get_post";
 
 export async function getPostById(searchParams: { id: string }) {
   const { id } = searchParams;
@@ -53,9 +53,9 @@ export async function getPostById(searchParams: { id: string }) {
 
     logDbError(getPostById, error);
 
-    const result = {
+    const result: { data: null; errorCode: GetPostByIdErrorCode } = {
       data: null,
-      errorCode: "unknown_error" as GetPostByIdErrorCode,
+      errorCode: "cannot_get_post",
     };
 
     switch (error.code) {
@@ -120,9 +120,9 @@ export async function createPost(data: {
 
     logDbError(createPost, error);
 
-    const result = {
+    const result: { data: null; errorCode: CreatePostErrorCode } = {
       data: null,
-      errorCode: "cannot_create_post" as CreatePostErrorCode,
+      errorCode: "cannot_create_post",
     };
 
     switch (error.code) {
@@ -197,9 +197,9 @@ export async function updatePost(
 
     logDbError(updatePost, error);
 
-    const result = {
+    const result: { data: null; errorCode: UpdatePostErrorCode } = {
       data: null,
-      errorCode: "cannot_update_post" as UpdatePostErrorCode,
+      errorCode: "cannot_update_post",
     };
 
     switch (error.code) {
@@ -218,7 +218,7 @@ export async function updatePost(
   }
 }
 
-type DeletePostErrorCode = "post_not_found" | "unknown_error";
+type DeletePostErrorCode = "post_not_found" | "cannot_delete_post";
 
 export async function deletePost(searchParams: { id: string }) {
   const { id } = searchParams;
@@ -246,9 +246,9 @@ export async function deletePost(searchParams: { id: string }) {
 
     logDbError(deletePost, error);
 
-    const result = {
+    const result: { data: null; errorCode: DeletePostErrorCode } = {
       data: null,
-      errorCode: "unknown_error" as DeletePostErrorCode,
+      errorCode: "cannot_delete_post",
     };
 
     switch (error.code) {

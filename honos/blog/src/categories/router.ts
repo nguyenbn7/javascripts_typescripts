@@ -1,8 +1,15 @@
 import { Hono } from "hono";
-import { zValidator } from "@hono/zod-validator";
 
-import { categoryIdSchema, categorySchema } from "./schema";
-import { createCategory, getCategories, getCategoryById } from "./repository";
+import { categorySchema } from "./schema";
+import {
+  createCategory,
+  deleteCategory,
+  getCategories,
+  getCategoryById,
+  updateCategory,
+} from "./repository";
+
+import { zValidator } from "../lib/middleware";
 
 import { ReasonPhrases, StatusCodes } from "http-status-codes";
 
@@ -14,27 +21,13 @@ const app = new Hono()
       categories,
     });
   })
-  .get(
-    "/:id",
-    zValidator("param", categoryIdSchema, (result, c) => {
-      if (!result.success)
-        return c.json(
-          {
-            title: ReasonPhrases.BAD_REQUEST,
-            status: StatusCodes.BAD_REQUEST,
-            detail: "Invalid id",
-          },
-          StatusCodes.BAD_REQUEST
-        );
-    }),
-    async (c) => {
-      const { id } = c.req.valid("param");
+  .get("/:id", async (c) => {
+    const { id } = c.req.param();
 
-      const { data: category, error } = await getCategoryById({ id });
+    const { data: category, errorCode } = await getCategoryById({ id });
 
-      if (error) return c.json(error, error.status);
-
-      if (!category)
+    if (errorCode) {
+      if (errorCode === "category_not_found")
         return c.json(
           {
             title: ReasonPhrases.NOT_FOUND,
@@ -43,44 +36,146 @@ const app = new Hono()
           },
           StatusCodes.NOT_FOUND
         );
-
-      return c.json({
-        category,
-      });
-    }
-  )
-  .post(
-    "/",
-    zValidator("json", categorySchema, (result, c) => {
-      if (!result.success)
+      else
         return c.json(
           {
-            status: StatusCodes.BAD_REQUEST,
-            title: ReasonPhrases.BAD_REQUEST,
-            detail: "Validation error",
-            errors: result.error.errors.map((e) => ({
-              code: e.code,
-              message: e.message,
-              path: e.path.join("."),
-            })),
+            title: "Unknown Error",
+            status: -1,
+            detail: `Cannot get post due to unknown error`,
           },
-          StatusCodes.BAD_REQUEST
+          -1
         );
-    }),
-    async (c) => {
-      const { name, description } = c.req.valid("json");
-
-      const { data: category, error } = await createCategory({
-        name,
-        description: description ?? null,
-      });
-
-      if (error) return c.json(error, error.status);
-
-      return c.json({
-        category,
-      });
     }
-  );
+
+    return c.json({
+      category,
+    });
+  })
+  .post("/", zValidator("json", categorySchema), async (c) => {
+    const { name, description } = c.req.valid("json");
+
+    const { data: category, errorCode } = await createCategory({
+      name,
+      description: description ?? null,
+    });
+
+    if (errorCode) {
+      if (errorCode === "duplicate_category_name")
+        return c.json(
+          {
+            title: ReasonPhrases.CONFLICT,
+            detail: `Category '${name}' existed`,
+            status: StatusCodes.CONFLICT,
+          },
+          StatusCodes.CONFLICT
+        );
+      else
+        return c.json(
+          {
+            title: ReasonPhrases.UNPROCESSABLE_ENTITY,
+            detail: "Cannot create category",
+            status: StatusCodes.UNPROCESSABLE_ENTITY,
+          },
+          StatusCodes.UNPROCESSABLE_ENTITY
+        );
+    }
+
+    return c.json({
+      category,
+    });
+  })
+  .put("/:id", zValidator("json", categorySchema.partial()), async (c) => {
+    const { id } = c.req.param();
+    const { name, description } = c.req.valid("json");
+
+    const { data: existedCategory, errorCode: getCategoryErrorCode } =
+      await getCategoryById({ id });
+
+    if (getCategoryErrorCode) {
+      if (getCategoryErrorCode === "category_not_found")
+        return c.json(
+          {
+            status: StatusCodes.NOT_FOUND,
+            title: ReasonPhrases.NOT_FOUND,
+            detail: `Category with id '${id}' not found`,
+          },
+          StatusCodes.NOT_FOUND
+        );
+      else
+        return c.json(
+          {
+            title: "Unknown Error",
+            detail: `Cannot get category with id '${id}'`,
+            status: -1,
+          },
+          -1
+        );
+    }
+
+    const { data: category, errorCode: updateCategoryErrorCode } =
+      await updateCategory(
+        { id },
+        {
+          name: name ?? existedCategory.name,
+          description:
+            description === undefined
+              ? existedCategory.description
+              : description,
+        }
+      );
+
+    if (updateCategoryErrorCode) {
+      if (updateCategoryErrorCode === "duplicate_category_name")
+        return c.json(
+          {
+            title: ReasonPhrases.CONFLICT,
+            detail: `Category '${name}' existed`,
+            status: StatusCodes.CONFLICT,
+          },
+          StatusCodes.CONFLICT
+        );
+      else
+        return c.json(
+          {
+            title: ReasonPhrases.UNPROCESSABLE_ENTITY,
+            detail: "Cannot update category",
+            status: StatusCodes.UNPROCESSABLE_ENTITY,
+          },
+          StatusCodes.UNPROCESSABLE_ENTITY
+        );
+    }
+
+    return c.json({
+      category,
+    });
+  })
+  .delete("/:id", async (c) => {
+    const { id } = c.req.param();
+
+    const { data: _, errorCode } = await deleteCategory({ id });
+
+    if (errorCode) {
+      if (errorCode === "category_not_found")
+        return c.json(
+          {
+            title: ReasonPhrases.NOT_FOUND,
+            detail: `Category with id '${id}' not found`,
+            status: StatusCodes.NOT_FOUND,
+          },
+          StatusCodes.NOT_FOUND
+        );
+      else
+        return c.json(
+          {
+            title: "Unknown Error",
+            detail: `Cannot delete category with id '${id}'`,
+            status: -1,
+          },
+          -1
+        );
+    }
+
+    return c.body(null, StatusCodes.NO_CONTENT);
+  });
 
 export default app;
