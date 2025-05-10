@@ -86,7 +86,8 @@ content-type: application/json
 
 {
     "title": "My 2nd Blog Post",
-    "content": "This is the updated content of my first blog post."
+    "content": "This is the updated content of my first blog post.", 
+    "categoryId": "c7688de6-915c-4ab9-b760-a016b48727d4"
 }
 
 ###

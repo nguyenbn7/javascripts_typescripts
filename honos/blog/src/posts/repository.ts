@@ -1,22 +1,63 @@
 import type { DatabaseError } from "pg-protocol";
 
 import db from "../lib/database";
-import { categoryTable, postTable } from "../lib/database/schema";
+import {
+  categoryTable,
+  postsToTags,
+  postTable,
+  tagTable,
+} from "../lib/database/schema";
 import { logDbError } from "../lib/database/error";
 import { normalizeString } from "../lib";
-import { eq, getTableColumns } from "drizzle-orm";
+import { eq, getTableColumns, sql } from "drizzle-orm";
 import slug from "slug";
 
 const { normalizedTitle, categoryId, ...columns } = getTableColumns(postTable);
 
 export async function getPosts() {
+  // return db.query.postTable.findMany({
+  //   with: {
+  //     category: {
+  //       columns: {
+  //         name: true,
+  //       },
+  //     },
+  //     postsToTags: {
+  //       columns: {},
+  //       with: {
+  //         tag: {
+  //           columns: {
+  //             name: true,
+  //           },
+  //         },
+  //       },
+  //     },
+  //   },
+  //   columns: {
+  //     id: true,
+  //     title: true,
+  //     slug: true,
+  //     published: true,
+  //     createdAt: true,
+  //     updatedAt: true,
+  //     content: true,
+  //   },
+  // });
+  const subquery = db
+    .select({ name: tagTable.name, postId: postsToTags.postId })
+    .from(tagTable)
+    .innerJoin(postsToTags, eq(tagTable.id, postsToTags.tagId))
+    .as("sq");
+
   return db
     .select({
       ...columns,
       category: categoryTable.name,
+      tags: subquery.name ?? [],
     })
     .from(postTable)
-    .leftJoin(categoryTable, eq(postTable.categoryId, categoryTable.id));
+    .leftJoin(categoryTable, eq(postTable.categoryId, categoryTable.id))
+    .leftJoin(subquery, eq(postTable.id, subquery.postId));
 }
 
 type GetPostByIdErrorCode = "post_not_found" | "cannot_get_post";
