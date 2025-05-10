@@ -49,12 +49,9 @@ const app = new Hono()
 
     const { categoryId, ...post } = data;
 
-    return c.json(
-      {
-        post,
-      },
-      StatusCodes.CREATED
-    );
+    return c.json({
+      post,
+    });
   })
   .post("/", zValidator("json", postSchema), async (c) => {
     const { title, categoryId, content, published } = c.req.valid("json");
@@ -96,9 +93,12 @@ const app = new Hono()
         );
     }
 
-    return c.json({
-      post,
-    });
+    return c.json(
+      {
+        post,
+      },
+      StatusCodes.CREATED
+    );
   })
   .put("/:id", zValidator("json", postSchema.partial()), async (c) => {
     const { id } = c.req.param();

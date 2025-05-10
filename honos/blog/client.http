@@ -15,7 +15,7 @@ content-type: application/json
 }
 
 ###
-# @name create_category
+# @name update_category
 PUT {{baseUrl}}/api/categories/9a6f1cdd-3db2-49b4-9e72-e6244414113d HTTP/1.1
 content-type: application/json
 
@@ -34,6 +34,38 @@ GET {{baseUrl}}/api/categories/f60b3adc-6048-4fb8-a6f7-e4d50c566a0b HTTP/1.1
 ### 
 # @name delete_category
 DELETE {{baseUrl}}/api/categories/c718b8b9-dc0b-4145-bf99-f1d708373c02 HTTP/1.1
+
+################ Tag ################
+
+###
+# @name create_tag
+POST {{baseUrl}}/api/tags HTTP/1.1
+content-type: application/json
+
+{
+    "name": "Tech"
+}
+
+###
+# @name update_tag
+PUT {{baseUrl}}/api/tags/9a6f1cdd-3db2-49b4-9e72-e6244414113d HTTP/1.1
+content-type: application/json
+
+{
+    "name": "Technologies"
+}
+
+### 
+# @name get_tags
+GET {{baseUrl}}/api/tags HTTP/1.1
+
+### 
+# @name get_tag
+GET {{baseUrl}}/api/tags/f60b3adc-6048-4fb8-a6f7-e4d50c566a0b HTTP/1.1
+
+### 
+# @name delete_tag
+DELETE {{baseUrl}}/api/tags/c718b8b9-dc0b-4145-bf99-f1d708373c02 HTTP/1.1
 
 ################ POST ################
 
