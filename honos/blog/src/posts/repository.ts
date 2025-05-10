@@ -43,21 +43,30 @@ export async function getPosts() {
   //     content: true,
   //   },
   // });
-  const subquery = db
-    .select({ name: tagTable.name, postId: postsToTags.postId })
-    .from(tagTable)
-    .innerJoin(postsToTags, eq(tagTable.id, postsToTags.tagId))
-    .as("sq");
+  // const subquery = db
+  //   .select({ name: tagTable.name, postId: postsToTags.postId })
+  //   .from(tagTable)
+  //   .innerJoin(postsToTags, eq(tagTable.id, postsToTags.tagId))
+  //   .as("sq");
 
+  // return db
+  //   .select({
+  //     ...columns,
+  //     category: categoryTable.name,
+  //     tags: subquery.name ?? [],
+  //   })
+  //   .from(postTable)
+  //   .leftJoin(categoryTable, eq(postTable.categoryId, categoryTable.id))
+  //   .leftJoin(subquery, eq(postTable.id, subquery.postId));
+
+  // TODO: get tags
   return db
     .select({
       ...columns,
       category: categoryTable.name,
-      tags: subquery.name ?? [],
     })
     .from(postTable)
-    .leftJoin(categoryTable, eq(postTable.categoryId, categoryTable.id))
-    .leftJoin(subquery, eq(postTable.id, subquery.postId));
+    .leftJoin(categoryTable, eq(postTable.categoryId, categoryTable.id));
 }
 
 type GetPostByIdErrorCode = "post_not_found" | "cannot_get_post";
