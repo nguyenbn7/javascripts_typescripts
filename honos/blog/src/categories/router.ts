@@ -47,9 +47,12 @@ const app = new Hono()
         );
     }
 
-    return c.json({
-      category,
-    });
+    return c.json(
+      {
+        category,
+      },
+      StatusCodes.CREATED
+    );
   })
   .post("/", zValidator("json", categorySchema), async (c) => {
     const { name, description } = c.req.valid("json");

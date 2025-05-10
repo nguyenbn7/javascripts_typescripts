@@ -3,6 +3,8 @@
 # @name get_root
 GET {{baseUrl}} HTTP/1.1
 
+################ CATEGORY ################
+
 ###
 # @name create_category
 POST {{baseUrl}}/api/categories HTTP/1.1
@@ -32,6 +34,8 @@ GET {{baseUrl}}/api/categories/f60b3adc-6048-4fb8-a6f7-e4d50c566a0b HTTP/1.1
 ### 
 # @name delete_category
 DELETE {{baseUrl}}/api/categories/c718b8b9-dc0b-4145-bf99-f1d708373c02 HTTP/1.1
+
+################ POST ################
 
 ###
 # @name create_post
